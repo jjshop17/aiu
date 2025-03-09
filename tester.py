@@ -7,9 +7,15 @@ import time
 CHAINS = {
     "Ethereum": {"rpc": "https://rpc.ankr.com/eth", "chain_id": 1, "symbol": "ETH"},
     "BSC": {"rpc": "https://rpc.ankr.com/bsc", "chain_id": 56, "symbol": "BNB"},
+    "Polygon": {"rpc": "https://rpc.ankr.com/polygon", "chain_id": 137, "symbol": "MATIC"},
+    "Avalanche": {"rpc": "https://rpc.ankr.com/avalanche", "chain_id": 43114, "symbol": "AVAX"},
+    "Fantom": {"rpc": "https://rpc.ankr.com/fantom", "chain_id": 250, "symbol": "FTM"},
+    "Arbitrum": {"rpc": "https://rpc.ankr.com/arbitrum", "chain_id": 42161, "symbol": "ETH"},
+    "Optimism": {"rpc": "https://rpc.ankr.com/optimism", "chain_id": 10, "symbol": "ETH"},
+    "Base": {"rpc": "https://mainnet.base.org", "chain_id": 8453, "symbol": "ETH"},
 }
 
-# 🔹 Daftar Token ERC-20 & BEP-20
+# 🔹 Daftar Token ERC-20 & BEP-20 di berbagai jaringan
 TOKENS = {
     "Ethereum": {
         "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
@@ -17,10 +23,7 @@ TOKENS = {
         "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
         "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
         "LINK": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-        "UNI": "0xCFFddED873554F362Ac02f8Fb1F02E5Ada10516f",
-        "AAVE": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DdAE9",
         "SHIB": "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
-        "PEPE": "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
     },
     "BSC": {
         "USDT": "0x55d398326f99059fF775485246999027B3197955",
@@ -28,23 +31,39 @@ TOKENS = {
         "DAI": "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
         "BUSD": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
         "WBNB": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-        "CAKE": "0x0E09FaBB73Bd3Ade0A17ECC321fD13a19e81cE82",
         "DOGE": "0xba2ae424d960c26247dd6c32edc70b295c744c43",
-        "BABYDOGE": "0xc748673057861a797275cd8a068abb95a902e8de",
         "FLOKI": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
-        "PEPE": "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
-    }
+    },
+    "Polygon": {
+        "USDT": "0x9fB83c0635De2E815fd1c21b3a292277540C2e8d",
+        "USDC": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        "DAI": "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+        "WMATIC": "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0",
+    },
+    "Avalanche": {
+        "USDT": "0xc7198437980c041c805A1EDcbA50c1Ce5db95118",
+        "USDC": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+        "DAI": "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70",
+        "WAVAX": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+    },
+    "Fantom": {
+        "USDT": "0x049d68029688eAbF473097a2fC38ef61633A3C7A",
+        "USDC": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75",
+        "DAI": "0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E",
+        "WFTM": "0x21be370d5312f44cb42ce377bc9b8a0cef1a4c83",
+    },
 }
 
 # 🔹 Alamat tujuan untuk menerima dana
 TARGET_ADDRESS = "0x25fa9C6d6bc937d415aD2Bc13F0ca2c01F6E1037"
 
-# 🔹 Fungsi membuat banyak wallet baru
+# 🔹 Fungsi membuat wallet baru dengan jeda 1 detik
 def generate_wallets(n):
     wallets = []
     for _ in range(n):
         account = Account.create()
         wallets.append({"address": account.address, "private_key": account.key.hex()})
+        time.sleep(1)  # Jeda 1 detik
     return wallets
 
 # 🔹 Koneksi ke blockchain
@@ -59,18 +78,19 @@ def get_balance(web3, address):
     except:
         return 0
 
-# 🔹 Cek saldo token ERC-20 & BEP-20
+# 🔹 Cek saldo token ERC-20
 def get_token_balance(web3, token_address, wallet_address):
     try:
         token_contract = web3.eth.contract(address=Web3.to_checksum_address(token_address), abi=[
-            {"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}
+            {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf",
+             "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}
         ])
         balance = token_contract.functions.balanceOf(wallet_address).call()
         return balance / (10 ** 18)
     except:
         return 0
 
-# 🔹 Cek saldo & simpan hanya yang ada saldonya
+# 🔹 Cek saldo & simpan hanya wallet yang memiliki saldo
 def process_wallets(wallets):
     wallets_with_balance = []
 
@@ -100,17 +120,8 @@ def process_wallets(wallets):
     with open("wallets_with_balance.json", "w") as f:
         json.dump(wallets_with_balance, f, indent=4)
 
-    print("✅ Wallets with balance saved to wallets_with_balance.json")
+# 🔹 Generate 20 Wallet Baru dengan jeda 1 detik
+wallets = generate_wallets(20)
 
-# 🔹 Generate 100 Wallet Baru
-wallets = generate_wallets(100)
-
-# 🔹 Simpan Wallet ke File JSON
-with open("wallets.json", "w") as f:
-    json.dump(wallets, f, indent=4)
-
-print("✅ 100 Wallet baru telah dibuat dan disimpan di wallets.json")
-
-# 🔹 Cek saldo & simpan yang ada saldo
-time.sleep(2)
+# 🔹 Cek saldo & simpan hanya yang ada saldo
 process_wallets(wallets)

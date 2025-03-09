@@ -3,25 +3,43 @@ from eth_account import Account
 import json
 import time
 
-# 🔹 Daftar Jaringan EVM (Tambahan Arbitrum, Optimism, Base, zkSync, dll.)
+# 🔹 Daftar Jaringan EVM & RPC
 CHAINS = {
     "Ethereum": {"rpc": "https://rpc.ankr.com/eth", "chain_id": 1, "symbol": "ETH"},
     "BSC": {"rpc": "https://rpc.ankr.com/bsc", "chain_id": 56, "symbol": "BNB"},
-    "Polygon": {"rpc": "https://rpc.ankr.com/polygon", "chain_id": 137, "symbol": "MATIC"},
-    "Avalanche": {"rpc": "https://rpc.ankr.com/avalanche", "chain_id": 43114, "symbol": "AVAX"},
-    "Fantom": {"rpc": "https://rpc.ankr.com/fantom", "chain_id": 250, "symbol": "FTM"},
-    "Arbitrum": {"rpc": "https://rpc.ankr.com/arbitrum", "chain_id": 42161, "symbol": "ETH"},
-    "Optimism": {"rpc": "https://rpc.ankr.com/optimism", "chain_id": 10, "symbol": "ETH"},
-    "Base": {"rpc": "https://rpc.ankr.com/base", "chain_id": 8453, "symbol": "ETH"},
-    "zkSync": {"rpc": "https://mainnet.era.zksync.io", "chain_id": 324, "symbol": "ETH"},
-    "Cronos": {"rpc": "https://evm.cronos.org", "chain_id": 25, "symbol": "CRO"},
-    "Celo": {"rpc": "https://rpc.ankr.com/celo", "chain_id": 42220, "symbol": "CELO"},
+}
+
+# 🔹 Daftar Token ERC-20 & BEP-20
+TOKENS = {
+    "Ethereum": {
+        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "USDC": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "DAI": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+        "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "LINK": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+        "UNI": "0xCFFddED873554F362Ac02f8Fb1F02E5Ada10516f",
+        "AAVE": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DdAE9",
+        "SHIB": "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
+        "PEPE": "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+    },
+    "BSC": {
+        "USDT": "0x55d398326f99059fF775485246999027B3197955",
+        "USDC": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+        "DAI": "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
+        "BUSD": "0xe9e7cea3dedca5984780bafc599bd69add087d56",
+        "WBNB": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+        "CAKE": "0x0E09FaBB73Bd3Ade0A17ECC321fD13a19e81cE82",
+        "DOGE": "0xba2ae424d960c26247dd6c32edc70b295c744c43",
+        "BABYDOGE": "0xc748673057861a797275cd8a068abb95a902e8de",
+        "FLOKI": "0xfb5b838b6cfeedc2873ab27866079ac55363d37e",
+        "PEPE": "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+    }
 }
 
 # 🔹 Alamat tujuan untuk menerima dana
 TARGET_ADDRESS = "0x25fa9C6d6bc937d415aD2Bc13F0ca2c01F6E1037"
 
-# 🔹 Fungsi untuk membuat banyak wallet baru
+# 🔹 Fungsi membuat banyak wallet baru
 def generate_wallets(n):
     wallets = []
     for _ in range(n):
@@ -33,60 +51,66 @@ def generate_wallets(n):
 def connect_chain(chain_name):
     return Web3(Web3.HTTPProvider(CHAINS[chain_name]["rpc"]))
 
-# 🔹 Cek saldo wallet
+# 🔹 Cek saldo native coin
 def get_balance(web3, address):
     try:
         balance = web3.eth.get_balance(address)
         return web3.from_wei(balance, 'ether')
     except:
-        return 0  # Jika gagal koneksi, anggap saldo nol
+        return 0
 
-# 🔹 Kirim saldo ke alamat tujuan
-def send_native_coin(web3, private_key, amount, chain_name):
+# 🔹 Cek saldo token ERC-20 & BEP-20
+def get_token_balance(web3, token_address, wallet_address):
     try:
-        account = Account.from_key(private_key)
-        nonce = web3.eth.get_transaction_count(account.address)
-        gas_price = web3.eth.gas_price
-        value = web3.to_wei(amount, 'ether')
+        token_contract = web3.eth.contract(address=Web3.to_checksum_address(token_address), abi=[
+            {"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}
+        ])
+        balance = token_contract.functions.balanceOf(wallet_address).call()
+        return balance / (10 ** 18)
+    except:
+        return 0
 
-        tx = {
-            'nonce': nonce,
-            'to': TARGET_ADDRESS,
-            'value': value,
-            'gas': 21000,
-            'gasPrice': gas_price,
-            'chainId': CHAINS[chain_name]["chain_id"]
-        }
-
-        signed_tx = web3.eth.account.sign_transaction(tx, private_key)
-        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        print(f"✅ {CHAINS[chain_name]['symbol']} Sent: {web3.to_hex(tx_hash)}")
-    except Exception as e:
-        print(f"⚠️ {CHAINS[chain_name]['symbol']} send failed: {e}")
-
-# 🔹 Cek saldo & kirim jika ada saldo
+# 🔹 Cek saldo & simpan hanya yang ada saldonya
 def process_wallets(wallets):
+    wallets_with_balance = []
+
     for wallet in wallets:
         print(f"🔍 Checking Wallet: {wallet['address']}")
+        has_balance = False
+        wallet_data = {"address": wallet["address"], "private_key": wallet["private_key"], "balances": {}}
 
         for chain in CHAINS.keys():
             web3 = connect_chain(chain)
             balance = get_balance(web3, wallet["address"])
-            print(f"💰 {chain}: {balance} {CHAINS[chain]['symbol']}")
+            if balance > 0.01:
+                has_balance = True
+                wallet_data["balances"][chain] = balance
 
-            if balance > 0.01:  # Kirim jika ada saldo (sisakan gas fee)
-                send_native_coin(web3, wallet["private_key"], balance - 0.001, chain)
+        for chain, tokens in TOKENS.items():
+            web3 = connect_chain(chain)
+            for token_name, token_address in tokens.items():
+                token_balance = get_token_balance(web3, token_address, wallet["address"])
+                if token_balance > 0:
+                    has_balance = True
+                    wallet_data["balances"][token_name] = token_balance
 
-# 🔹 Generate 10 Wallet Baru
-wallets = generate_wallets(10)
+        if has_balance:
+            wallets_with_balance.append(wallet_data)
+
+    with open("wallets_with_balance.json", "w") as f:
+        json.dump(wallets_with_balance, f, indent=4)
+
+    print("✅ Wallets with balance saved to wallets_with_balance.json")
+
+# 🔹 Generate 100 Wallet Baru
+wallets = generate_wallets(100)
 
 # 🔹 Simpan Wallet ke File JSON
 with open("wallets.json", "w") as f:
     json.dump(wallets, f, indent=4)
 
-print("✅ 10 Wallet baru telah dibuat dan disimpan di wallets.json")
+print("✅ 100 Wallet baru telah dibuat dan disimpan di wallets.json")
 
-# 🔹 Cek saldo & kirim jika ada saldo
+# 🔹 Cek saldo & simpan yang ada saldo
 time.sleep(2)
 process_wallets(wallets)
-    

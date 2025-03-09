@@ -57,15 +57,6 @@ TOKENS = {
 # 🔹 Alamat tujuan untuk menerima dana
 TARGET_ADDRESS = "0x25fa9C6d6bc937d415aD2Bc13F0ca2c01F6E1037"
 
-# 🔹 Fungsi membuat wallet baru dengan jeda 1 detik
-def generate_wallets(n):
-    wallets = []
-    for _ in range(n):
-        account = Account.create()
-        wallets.append({"address": account.address, "private_key": account.key.hex()})
-        time.sleep(1)  # Jeda 1 detik
-    return wallets
-
 # 🔹 Koneksi ke blockchain
 def connect_chain(chain_name):
     return Web3(Web3.HTTPProvider(CHAINS[chain_name]["rpc"]))
@@ -90,38 +81,47 @@ def get_token_balance(web3, token_address, wallet_address):
     except:
         return 0
 
-# 🔹 Cek saldo & simpan hanya wallet yang memiliki saldo
-def process_wallets(wallets):
-    wallets_with_balance = []
+# 🔹 Simpan wallet yang memiliki saldo
+def save_wallet(wallet_data):
+    try:
+        with open("wallets_with_balance.json", "r") as f:
+            wallets = json.load(f)
+    except:
+        wallets = []
 
-    for wallet in wallets:
-        print(f"🔍 Checking Wallet: {wallet['address']}")
-        has_balance = False
-        wallet_data = {"address": wallet["address"], "private_key": wallet["private_key"], "balances": {}}
-
-        for chain in CHAINS.keys():
-            web3 = connect_chain(chain)
-            balance = get_balance(web3, wallet["address"])
-            if balance > 0.01:
-                has_balance = True
-                wallet_data["balances"][chain] = balance
-
-        for chain, tokens in TOKENS.items():
-            web3 = connect_chain(chain)
-            for token_name, token_address in tokens.items():
-                token_balance = get_token_balance(web3, token_address, wallet["address"])
-                if token_balance > 0:
-                    has_balance = True
-                    wallet_data["balances"][token_name] = token_balance
-
-        if has_balance:
-            wallets_with_balance.append(wallet_data)
+    wallets.append(wallet_data)
 
     with open("wallets_with_balance.json", "w") as f:
-        json.dump(wallets_with_balance, f, indent=4)
+        json.dump(wallets, f, indent=4)
 
-# 🔹 Generate 20 Wallet Baru dengan jeda 1 detik
-wallets = generate_wallets(20)
+# 🔹 Buat 20 wallet & cek saldo langsung
+for i in range(20):
+    account = Account.create()
+    wallet = {"address": account.address, "private_key": account.key.hex(), "balances": {}}
+    print(f"🔹 Wallet {i+1} Created: {wallet['address']}")
 
-# 🔹 Cek saldo & simpan hanya yang ada saldo
-process_wallets(wallets)
+    has_balance = False
+
+    # Cek saldo native di semua jaringan
+    for chain in CHAINS.keys():
+        web3 = connect_chain(chain)
+        balance = get_balance(web3, wallet["address"])
+        if balance > 0.01:
+            has_balance = True
+            wallet["balances"][chain] = balance
+
+    # Cek saldo token di semua jaringan
+    for chain, tokens in TOKENS.items():
+        web3 = connect_chain(chain)
+        for token_name, token_address in tokens.items():
+            token_balance = get_token_balance(web3, token_address, wallet["address"])
+            if token_balance > 0:
+                has_balance = True
+                wallet["balances"][token_name] = token_balance
+
+    # Simpan hanya jika ada saldo
+    if has_balance:
+        save_wallet(wallet)
+        print(f"✅ Wallet {i+1} has balance, saved!")
+    else:
+        print(f"❌ Wallet {i+1} is empty, discarded.")

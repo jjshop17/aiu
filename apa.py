@@ -9,7 +9,7 @@ from web3 import Web3
 
 # Inisialisasi Web3 (Testnet Monad)
 web3 = Web3(Web3.HTTPProvider("https://monad-testnet.rpc-url"))
-private_key = "PRIVATE_KEY_ANDA"
+private_key = "0000000000000000000000000000000000000000000000000000000000000002"
 account = web3.eth.account.from_key(private_key)
 wallet_address = account.address
 
